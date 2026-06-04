@@ -1,0 +1,33 @@
+---
+- name: Set vm.max_map_count untuk Elasticsearch
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+- name: Start docker stack
+  command: docker compose -f /home/azureuser/soar-stack/docker-compose.yml up -d
+  become_user: azureuser
+  register: docker_up
+  changed_when: "'Started' in docker_up.stdout or 'Created' in docker_up.stdout"
+
+- name: Tunggu n8n siap
+  uri:
+    url: http://localhost:5678
+    status_code: 200
+  register: n8n_check
+  retries: 15
+  delay: 10
+  until: n8n_check.status == 200
+  failed_when: false
+
+- name: Tunggu TheHive siap
+  uri:
+    url: http://localhost:9000/api/v1/status
+    status_code: [200, 401]
+  register: thehive_check
+  retries: 20
+  delay: 10
+  until: thehive_check.status in [200, 401]
+  failed_when: false

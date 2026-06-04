@@ -1,0 +1,29 @@
+---
+# ============================================================
+# SOAR Auto-Recovery Playbook
+# Jalankan: ansible-playbook -i inventory/hosts.ini site.yml
+# ============================================================
+
+- name: Setup iptables persistent di agent-02
+  hosts: vm-agent-02
+  become: true
+  roles:
+    - iptables
+
+- name: Setup Wazuh active response di manager
+  hosts: manager
+  become: true
+  roles:
+    - wazuh
+
+- name: Pastikan Docker stack jalan di manager
+  hosts: manager
+  become: true
+  roles:
+    - docker_stack
+
+- name: Init TheHive user + API key
+  hosts: manager
+  become: false
+  roles:
+    - thehive_init

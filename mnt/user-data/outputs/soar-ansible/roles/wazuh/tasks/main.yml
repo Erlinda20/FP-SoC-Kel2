@@ -1,0 +1,112 @@
+---
+- name: Tulis local_rules.xml
+  copy:
+    dest: /var/ossec/rules/local_rules.xml
+    content: |
+      <group name="local,ddos,syslog,">
+        <rule id="100001" level="3">
+          <match>FIREWALL_DDOS_ALERT</match>
+          <description>iptables: DDoS log entry terdeteksi</description>
+        </rule>
+        <rule id="100004" level="12" frequency="10" timeframe="5">
+          <if_matched_sid>100001</if_matched_sid>
+          <match>SYN</match>
+          <description>Massive SYN Flood Traffic Detected by Network Firewall</description>
+          <group>attack,ddos,</group>
+        </rule>
+        <rule id="100005" level="10">
+          <if_sid>100001</if_sid>
+          <description>DDoS Alert dari iptables (non-SYN variant)</description>
+          <group>attack,ddos,</group>
+        </rule>
+      </group>
+    owner: root
+    group: wazuh
+    mode: '0640'
+  notify: restart wazuh-manager
+
+- name: Deploy notify-n8n.sh active response script
+  copy:
+    dest: /var/ossec/active-response/bin/notify-n8n.sh
+    content: |
+      #!/bin/bash
+      LOG_FILE="/var/log/wazuh-n8n-webhook.log"
+      N8N_URL="http://localhost:5678/webhook/wazuh-ddos-alert"
+      INPUT_JSON=$(cat)
+      ATTACKER_IP=$(echo "$INPUT_JSON" | python3 -c "
+      import sys, json
+      try:
+          d = json.load(sys.stdin)
+          ip = (d.get('parameters', {}).get('alert', {}).get('data', {}).get('srcip')
+             or d.get('parameters', {}).get('alert', {}).get('data', {}).get('src_ip')
+             or d.get('data', {}).get('srcip')
+             or 'unknown')
+          print(ip)
+      except:
+          print('unknown')
+      " 2>/dev/null)
+      RULE_ID=$(echo "$INPUT_JSON" | python3 -c "
+      import sys, json
+      try:
+          d = json.load(sys.stdin)
+          print(d.get('parameters', {}).get('alert', {}).get('rule', {}).get('id', 'unknown'))
+      except:
+          print('unknown')
+      " 2>/dev/null)
+      ALERT_LEVEL=$(echo "$INPUT_JSON" | python3 -c "
+      import sys, json
+      try:
+          d = json.load(sys.stdin)
+          print(d.get('parameters', {}).get('alert', {}).get('rule', {}).get('level', 'unknown'))
+      except:
+          print('unknown')
+      " 2>/dev/null)
+      TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      echo "$(date '+%Y-%m-%dT%H:%M:%S') [INFO] Active Response triggered. Rule=$RULE_ID Level=$ALERT_LEVEL AttackerIP=$ATTACKER_IP" >> "$LOG_FILE"
+      PAYLOAD="{\"alert_level\":\"$ALERT_LEVEL\",\"rule_id\":\"$RULE_ID\",\"attacker_ip\":\"$ATTACKER_IP\",\"victim_ip\":\"10.0.1.6\",\"attack_type\":\"DDoS SYN Flood\",\"victim_agent\":\"agent-server-02\",\"timestamp\":\"$TIMESTAMP\"}"
+      HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "$PAYLOAD" --connect-timeout 5 --max-time 10 "$N8N_URL" 2>/dev/null)
+      echo "$(date '+%Y-%m-%dT%H:%M:%S') [OK] Webhook sent. HTTP=$HTTP_STATUS Rule=$RULE_ID AttackerIP=$ATTACKER_IP" >> "$LOG_FILE"
+      exit 0
+    owner: root
+    group: wazuh
+    mode: '0750'
+  notify: restart wazuh-manager
+
+- name: Buat webhook log file
+  file:
+    path: /var/log/wazuh-n8n-webhook.log
+    state: touch
+    owner: root
+    group: wazuh
+    mode: '0664'
+
+- name: Tambahkan active-response config ke ossec.conf
+  blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} ANSIBLE MANAGED - active-response -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <command>
+        <name>notify-n8n</name>
+        <executable>notify-n8n.sh</executable>
+        <timeout_allowed>no</timeout_allowed>
+      </command>
+      <active-response>
+        <command>notify-n8n</command>
+        <location>server</location>
+        <rules_id>100004</rules_id>
+        <timeout>60</timeout>
+      </active-response>
+  notify: restart wazuh-manager
+
+- name: Pastikan wazuh-manager berjalan
+  systemd:
+    name: wazuh-manager
+    state: started
+    enabled: yes
+
+handlers:
+  - name: restart wazuh-manager
+    systemd:
+      name: wazuh-manager
+      state: restarted

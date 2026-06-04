@@ -1,0 +1,46 @@
+---
+- name: Cek apakah API key sudah tersimpan
+  stat:
+    path: "{{ thehive_api_key_file }}"
+  register: api_key_file
+
+- name: Cek status TheHive
+  uri:
+    url: "{{ thehive_url }}/api/v1/status"
+    status_code: [200, 401]
+  register: thehive_status
+  failed_when: false
+
+- name: Generate API key baru jika belum ada
+  when: not api_key_file.stat.exists and thehive_status.status in [200, 401]
+  block:
+    - name: Generate API key untuk admin
+      uri:
+        url: "{{ thehive_url }}/api/v1/user/admin@thehive.local/key/renew"
+        method: POST
+        user: "{{ thehive_admin_user }}"
+        password: "{{ thehive_admin_pass }}"
+        force_basic_auth: yes
+        status_code: [200, 201]
+        return_content: yes
+      register: api_key_result
+      failed_when: false
+
+    - name: Simpan API key ke file
+      copy:
+        content: "{{ api_key_result.content | regex_replace('\"', '') }}"
+        dest: "{{ thehive_api_key_file }}"
+        mode: '0600'
+      when: api_key_result.status in [200, 201]
+
+- name: Baca API key dari file
+  slurp:
+    src: "{{ thehive_api_key_file }}"
+  register: stored_api_key
+  when: api_key_file.stat.exists or (api_key_result is defined and api_key_result.status in [200, 201])
+  failed_when: false
+
+- name: Tampilkan API key (untuk dikonfigurasi ke n8n jika berubah)
+  debug:
+    msg: "TheHive API Key: {{ stored_api_key.content | b64decode | trim }}"
+  when: stored_api_key is defined and stored_api_key.content is defined

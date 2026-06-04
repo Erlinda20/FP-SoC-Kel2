@@ -1,0 +1,39 @@
+---
+- name: Cek apakah API key sudah tersimpan
+  stat:
+    path: /home/azureuser/.thehive_api_key
+  register: api_key_file
+
+- name: Generate API key jika belum ada
+  uri:
+    url: "http://localhost:9000/api/v1/user/admin@thehive.local/key/renew"
+    method: POST
+    user: "admin@thehive.local"
+    password: "secret"
+    force_basic_auth: yes
+    status_code: [200, 201]
+    return_content: yes
+  register: api_key_result
+  when: not api_key_file.stat.exists
+  failed_when: false
+
+- name: Simpan API key ke file
+  copy:
+    content: "{{ api_key_result.content | regex_replace('\"', '') }}"
+    dest: /home/azureuser/.thehive_api_key
+    mode: '0600'
+  when:
+    - not api_key_file.stat.exists
+    - api_key_result is defined
+    - api_key_result.status in [200, 201]
+
+- name: Tampilkan API key
+  slurp:
+    src: /home/azureuser/.thehive_api_key
+  register: stored_key
+  failed_when: false
+
+- name: Info API key TheHive
+  debug:
+    msg: "TheHive API Key: {{ stored_key.content | b64decode | trim }}"
+  when: stored_key.content is defined

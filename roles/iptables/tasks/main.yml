@@ -1,0 +1,57 @@
+---
+- name: Install iptables-persistent
+  apt:
+    name: iptables-persistent
+    state: present
+    update_cache: yes
+
+- name: Cek apakah rule DDOS LOG sudah ada
+  command: iptables -L INPUT -n
+  register: iptables_rules
+  changed_when: false
+
+- name: Pasang iptables LOG rule untuk DDoS detection
+  command: >
+    iptables -A INPUT -p tcp --syn --dport 80
+    -m limit --limit 50/s --limit-burst 100
+    -j LOG --log-prefix "FIREWALL_DDOS_ALERT: "
+  when: '"FIREWALL_DDOS_ALERT" not in iptables_rules.stdout'
+
+- name: Simpan iptables rules supaya persistent
+  command: netfilter-persistent save
+
+- name: Pastikan web server berjalan di port 80
+  shell: |
+    if ! ss -tlnp | grep -q ':80 '; then
+      nohup python3 -m http.server 80 > /tmp/http-server.log 2>&1 &
+      echo "started"
+    else
+      echo "already running"
+    fi
+  register: webserver_result
+  changed_when: "'started' in webserver_result.stdout"
+
+- name: Pastikan kern.log dimonitor wazuh-agent
+  blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} ANSIBLE MANAGED - kern.log -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>/var/log/kern.log</location>
+      </localfile>
+  notify: restart wazuh-agent
+
+- name: Tambahkan wazuh ke grup adm supaya bisa baca kern.log
+  user:
+    name: wazuh
+    groups: adm
+    append: yes
+  notify: restart wazuh-agent
+
+- name: Pastikan wazuh-agent berjalan
+  systemd:
+    name: wazuh-agent
+    state: started
+    enabled: yes
