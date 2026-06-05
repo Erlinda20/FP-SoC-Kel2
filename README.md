@@ -804,9 +804,7 @@ Implementasi SOAR berhasil memperpanjang kemampuan Mini SOC dari sekadar **detek
 ### Struktur Repositori (Update)
 
 ```
-MIKS-K11-TugasLogMonitoring/
-├── MIKSwazuhazure/
-├── setupservermiks/
+A-SOC-K1-SOAR/
 ├── soar-ansible/                 # Ansible playbook auto-recovery
 │   ├── site.yml
 │   ├── inventory/hosts.ini
