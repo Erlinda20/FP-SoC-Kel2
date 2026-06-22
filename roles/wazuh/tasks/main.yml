@@ -179,13 +179,13 @@
     pre_count = content.count('<name>custom-n8n.py</name>')
     if pre_count == 0:
         block = """
-  <integration>
-    <name>custom-n8n.py</name>
-    <hook_url>http://localhost:5678/webhook/wazuh-ddos-alert</hook_url>
-    <level>10</level>
-    <alert_format>json</alert_format>
-  </integration>
-"""
+      <integration>
+        <name>custom-n8n.py</name>
+        <hook_url>http://localhost:5678/webhook/wazuh-ddos-alert</hook_url>
+        <level>10</level>
+        <alert_format>json</alert_format>
+      </integration>
+    """
         content = content.replace('</ossec_config>', block + '\n</ossec_config>')
         with open('/var/ossec/etc/ossec.conf', 'w') as f:
             f.write(content)
