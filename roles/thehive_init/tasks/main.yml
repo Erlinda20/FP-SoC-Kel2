@@ -84,7 +84,7 @@
     body:
       login: "{{ soar_bot_login }}"
       name: "{{ soar_bot_name }}"
-      profile: "org-admin"
+      profile: "analyst"
       organisation: "{{ thehive_org_name }}"
       password: "{{ soar_bot_password }}"
     status_code: [200, 201]
