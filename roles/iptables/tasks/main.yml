@@ -118,11 +118,11 @@
         content = f.read()
     if '<location>/var/log/kern.log</location>' not in content:
         block = """
-  <localfile>
-    <log_format>syslog</log_format>
-    <location>/var/log/kern.log</location>
-  </localfile>
-"""
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>/var/log/kern.log</location>
+      </localfile>
+    """
         content = content.replace('</ossec_config>', block + '\n</ossec_config>')
         with open('/var/ossec/etc/ossec.conf', 'w') as f:
             f.write(content)
