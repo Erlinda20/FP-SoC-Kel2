@@ -98,12 +98,11 @@
       name: "{{ thehive_cred_name }}"
       type: "theHiveProjectApi"
       data:
-        apiKey: "{{ thehive_api_key }}"
+        apiToken: "{{ thehive_api_key }}"
         url: "{{ thehive_url }}"
     status_code: [200, 201]
     return_content: yes
   register: thehive_cred_result
-  failed_when: false
   when:
     - n8n_key_file.stat.exists
     - not thehive_cred_exists | default(false) | bool
