@@ -1,0 +1,4 @@
+---
+wazuh_manager_ip: "10.0.1.4"
+agent_02_ip: "10.0.1.6"
+n8n_webhook_path: "/wazuh-ddos-alert"

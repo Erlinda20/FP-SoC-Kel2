@@ -1,0 +1,275 @@
+---
+# ══════════════════════════════════════════════════
+# n8n Workflow Automation
+# Auth: X-N8N-API-KEY header (API key dibuat manual sekali via UI)
+# Flow: Check API key → Credentials → Import workflow → Activate
+# ══════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════
+# Step 1: Cek n8n API key
+# API key harus dibuat manual lewat n8n UI:
+#   Settings → n8n API → Create API Key
+# Lalu simpan ke ~/.n8n_api_key di manager VM
+# ══════════════════════════════════════════════════
+
+- name: Cek apakah n8n API key file ada
+  stat:
+    path: "{{ n8n_api_key_file }}"
+  register: n8n_key_file
+
+- name: SKIP - n8n API key belum tersedia
+  debug:
+    msg: |
+      ════════════════════════════════════════════════════════
+      ⚠  n8n API key perlu dibuat manual sekali.
+      
+      Langkah:
+        1. Buka n8n UI → http://{{ ansible_host | default('manager-ip') }}:5678
+        2. Settings → n8n API → Create API Key
+        3. Simpan key ke file di manager VM:
+           echo "YOUR_API_KEY" > ~/.n8n_api_key
+        4. Jalankan ulang playbook ini
+      ════════════════════════════════════════════════════════
+  when: not n8n_key_file.stat.exists
+
+# Semua task di bawah dijalankan hanya jika API key tersedia
+- name: Baca n8n API key
+  slurp:
+    src: "{{ n8n_api_key_file }}"
+  register: n8n_key_raw
+  when: n8n_key_file.stat.exists
+
+- name: Set fact n8n_api_key
+  set_fact:
+    n8n_api_key: "{{ n8n_key_raw.content | b64decode | trim }}"
+  when: n8n_key_file.stat.exists
+
+# ══════════════════════════════════════════════════
+# Step 2: Baca TheHive API key
+# ══════════════════════════════════════════════════
+
+- name: Baca TheHive soar-bot API key
+  slurp:
+    src: "{{ thehive_api_key_file }}"
+  register: thehive_key_raw
+  when: n8n_key_file.stat.exists
+  failed_when: false
+
+- name: Set fact thehive_api_key
+  set_fact:
+    thehive_api_key: "{{ thehive_key_raw.content | b64decode | trim }}"
+  when: 
+    - n8n_key_file.stat.exists
+    - thehive_key_raw.content is defined
+
+# ══════════════════════════════════════════════════
+# Step 3: Cek dan buat credential TheHive
+# ══════════════════════════════════════════════════
+
+- name: List credentials yang ada di n8n
+  uri:
+    url: "{{ n8n_url }}/api/v1/credentials"
+    method: GET
+    headers:
+      X-N8N-API-KEY: "{{ n8n_api_key }}"
+      Content-Type: "application/json"
+    status_code: [200]
+    return_content: yes
+  register: existing_creds
+  when: n8n_key_file.stat.exists
+
+- name: Set fact - cek credential sudah ada
+  set_fact:
+    thehive_cred_exists: "{{ existing_creds.json.data | default([]) | selectattr('name', 'equalto', thehive_cred_name) | list | length > 0 }}"
+    ssh_cred_exists: "{{ existing_creds.json.data | default([]) | selectattr('name', 'equalto', ssh_cred_name) | list | length > 0 }}"
+  when:
+    - n8n_key_file.stat.exists
+    - existing_creds.status == 200
+
+- name: Buat credential TheHive "{{ thehive_cred_name }}"
+  uri:
+    url: "{{ n8n_url }}/api/v1/credentials"
+    method: POST
+    headers:
+      X-N8N-API-KEY: "{{ n8n_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ thehive_cred_name }}"
+      type: "theHiveProjectApi"
+      data:
+        apiKey: "{{ thehive_api_key }}"
+        url: "{{ thehive_url }}"
+    status_code: [200, 201]
+    return_content: yes
+  register: thehive_cred_result
+  when:
+    - n8n_key_file.stat.exists
+    - not thehive_cred_exists | default(false) | bool
+    - thehive_api_key is defined
+
+- name: Info credential TheHive
+  debug:
+    msg: "Credential '{{ thehive_cred_name }}': {{ 'SUDAH ADA' if thehive_cred_exists | default(false) | bool else 'BERHASIL DIBUAT' }}"
+  when: n8n_key_file.stat.exists
+
+# ══════════════════════════════════════════════════
+# Step 4: Cek dan buat credential SSH agent-02
+# ══════════════════════════════════════════════════
+
+- name: Baca SSH private key agent-02
+  slurp:
+    src: "{{ agent_02_ssh_key_file }}"
+  register: ssh_key_content
+  when:
+    - n8n_key_file.stat.exists
+    - not ssh_cred_exists | default(false) | bool
+  failed_when: false
+
+- name: Buat credential SSH "{{ ssh_cred_name }}"
+  uri:
+    url: "{{ n8n_url }}/api/v1/credentials"
+    method: POST
+    headers:
+      X-N8N-API-KEY: "{{ n8n_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ ssh_cred_name }}"
+      type: "sshUserPrivateKey"
+      data:
+        host: "{{ agent_02_ip }}"
+        port: 22
+        username: "{{ agent_02_ssh_user }}"
+        privateKey: "{{ ssh_key_content.content | b64decode }}"
+        authType: "privateKey"
+    status_code: [200, 201]
+    return_content: yes
+  register: ssh_cred_result
+  when:
+    - n8n_key_file.stat.exists
+    - not ssh_cred_exists | default(false) | bool
+    - ssh_key_content.content is defined
+  failed_when: false
+
+- name: Info credential SSH
+  debug:
+    msg: "Credential '{{ ssh_cred_name }}': {{ 'SUDAH ADA' if ssh_cred_exists | default(false) | bool else ('BERHASIL DIBUAT' if ssh_cred_result.status | default(0) in [200, 201] else 'GAGAL - cek SSH key') }}"
+  when: n8n_key_file.stat.exists
+
+# ══════════════════════════════════════════════════
+# Step 5: Import workflow dari JSON file
+# ══════════════════════════════════════════════════
+
+- name: Cek keberadaan workflow export file
+  stat:
+    path: "{{ n8n_workflow_file }}"
+  register: workflow_file
+  when: n8n_key_file.stat.exists
+
+- name: List existing workflows
+  uri:
+    url: "{{ n8n_url }}/api/v1/workflows"
+    method: GET
+    headers:
+      X-N8N-API-KEY: "{{ n8n_api_key }}"
+      Content-Type: "application/json"
+    status_code: [200]
+    return_content: yes
+  register: existing_workflows
+  when: n8n_key_file.stat.exists
+
+- name: Set fact - cek workflow SOAR sudah ada
+  set_fact:
+    soar_workflow_exists: "{{ existing_workflows.json.data | default([]) | selectattr('name', 'search', 'SOAR') | list | length > 0 }}"
+    soar_workflow_id: "{{ (existing_workflows.json.data | default([]) | selectattr('name', 'search', 'SOAR') | list | first).id | default('') }}"
+  when:
+    - n8n_key_file.stat.exists
+    - existing_workflows.status == 200
+
+- name: Baca workflow JSON file
+  slurp:
+    src: "{{ n8n_workflow_file }}"
+  register: workflow_json_raw
+  when:
+    - n8n_key_file.stat.exists
+    - workflow_file.stat.exists | default(false)
+    - not soar_workflow_exists | default(false) | bool
+
+- name: Import workflow ke n8n
+  uri:
+    url: "{{ n8n_url }}/api/v1/workflows"
+    method: POST
+    headers:
+      X-N8N-API-KEY: "{{ n8n_api_key }}"
+      Content-Type: "application/json"
+    body: "{{ workflow_json_raw.content | b64decode }}"
+    body_format: json
+    status_code: [200, 201]
+    return_content: yes
+  register: imported_workflow
+  when:
+    - n8n_key_file.stat.exists
+    - workflow_file.stat.exists | default(false)
+    - not soar_workflow_exists | default(false) | bool
+    - workflow_json_raw.content is defined
+
+- name: Warning jika workflow file tidak ada
+  debug:
+    msg: |
+      ⚠ File {{ n8n_workflow_file }} tidak ditemukan.
+      Export workflow: n8n UI → menu workflow → Export → simpan ke path di atas.
+  when:
+    - n8n_key_file.stat.exists
+    - not workflow_file.stat.exists | default(true)
+
+# ══════════════════════════════════════════════════
+# Step 6: Activate / publish workflow
+# ══════════════════════════════════════════════════
+
+- name: Tentukan workflow ID (dari import)
+  set_fact:
+    n8n_workflow_id: "{{ imported_workflow.json.id }}"
+  when:
+    - imported_workflow is defined
+    - imported_workflow is not skipped
+    - imported_workflow.json is defined
+
+- name: Tentukan workflow ID (dari existing)
+  set_fact:
+    n8n_workflow_id: "{{ soar_workflow_id }}"
+  when:
+    - n8n_workflow_id is not defined or n8n_workflow_id | default('') == ''
+    - soar_workflow_exists | default(false) | bool
+
+- name: Activate workflow (PATCH)
+  uri:
+    url: "{{ n8n_url }}/api/v1/workflows/{{ n8n_workflow_id }}"
+    method: PATCH
+    headers:
+      X-N8N-API-KEY: "{{ n8n_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      active: true
+    status_code: [200]
+    return_content: yes
+  register: workflow_activated
+  when:
+    - n8n_key_file.stat.exists
+    - n8n_workflow_id is defined
+    - n8n_workflow_id | default('') != ''
+  failed_when: false
+
+# ══════════════════════════════════════════════════
+# Summary
+# ══════════════════════════════════════════════════
+
+- name: "═══ n8n Automation Summary ═══"
+  debug:
+    msg: |
+      TheHive Cred : {{ thehive_cred_name }} → {{ 'OK' if thehive_cred_exists | default(false) | bool or (thehive_cred_result | default({})).status | default(0) in [200, 201] else 'PENDING' }}
+      SSH Cred     : {{ ssh_cred_name }} → {{ 'OK' if ssh_cred_exists | default(false) | bool or (ssh_cred_result | default({})).status | default(0) in [200, 201] else 'PENDING' }}
+      Workflow ID  : {{ n8n_workflow_id | default('N/A') }}
+      Workflow     : {{ 'ACTIVE' if (workflow_activated | default({})).status | default(0) == 200 else 'PENDING' }}
+  when: n8n_key_file.stat.exists

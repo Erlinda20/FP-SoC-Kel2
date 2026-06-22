@@ -1,0 +1,10 @@
+---
+thehive_url: "http://localhost:9000"
+thehive_admin_user: "admin@thehive.local"
+thehive_admin_pass: "secret"
+thehive_org_name: "MIKS-SOAR-Lab"
+thehive_org_description: "MIKS SOAR Lab Organisation"
+soar_bot_login: "soar-bot@miks.lab"
+soar_bot_name: "SOAR Bot"
+soar_bot_password: "soar-bot-2024!"
+thehive_api_key_file: "/home/azureuser/.thehive_soarbot_api_key"

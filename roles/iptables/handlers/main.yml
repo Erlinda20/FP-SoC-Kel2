@@ -3,3 +3,7 @@
   systemd:
     name: wazuh-agent
     state: restarted
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes

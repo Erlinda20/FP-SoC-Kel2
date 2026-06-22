@@ -1,0 +1,7 @@
+---
+victim_port: 80
+log_prefix: "FIREWALL_DDOS_ALERT: "
+rate_limit: "50/s"
+rate_burst: 100
+webserver_port: 80
+wazuh_manager_ip: "10.0.1.4"

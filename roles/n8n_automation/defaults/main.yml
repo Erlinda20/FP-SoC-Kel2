@@ -1,0 +1,15 @@
+---
+n8n_url: "http://localhost:5678"
+n8n_api_key_file: "/home/azureuser/.n8n_api_key"
+n8n_workflow_file: "/home/azureuser/soar-stack/n8n-workflow-export.json"
+
+# TheHive credential config
+thehive_url: "http://10.0.1.4:9000"
+thehive_api_key_file: "/home/azureuser/.thehive_soarbot_api_key"
+thehive_cred_name: "The Hive 5 SOAR"
+
+# SSH credential config
+agent_02_ip: "10.0.1.6"
+agent_02_ssh_user: "azureuser"
+agent_02_ssh_key_file: "/home/azureuser/.ssh/key-wazuh-agent02.pem"
+ssh_cred_name: "SSH Agent-02"

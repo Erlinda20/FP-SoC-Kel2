@@ -1,39 +1,155 @@
 ---
-- name: Cek apakah API key sudah tersimpan
+# ══════════════════════════════════════════════════
+# TheHive 5.x Full Initialization
+# Endpoint yang terbukti bekerja di TheHive 5.2.16:
+#   GET  /api/organisation              → list semua org
+#   POST /api/organisation              → buat org baru
+#   POST /api/v1/user                   → buat user
+#   POST /api/v1/user/<login>/key/renew → generate API key
+# ══════════════════════════════════════════════════
+
+# ── Step 1: Tunggu TheHive siap ──
+- name: Tunggu TheHive API siap
+  uri:
+    url: "{{ thehive_url }}/api/v1/status"
+    method: GET
+    status_code: [200, 401]
+  register: thehive_ready
+  retries: 30
+  delay: 10
+  until: thehive_ready.status in [200, 401]
+
+# ══════════════════════════════════════════════════
+# Step 2: Cek dan buat organisasi MIKS-SOAR-Lab
+# ══════════════════════════════════════════════════
+
+- name: List semua organisasi via GET /api/organisation
+  uri:
+    url: "{{ thehive_url }}/api/organisation"
+    method: GET
+    user: "{{ thehive_admin_user }}"
+    password: "{{ thehive_admin_pass }}"
+    force_basic_auth: yes
+    status_code: [200]
+    return_content: yes
+  register: org_list
+
+- name: Set fact - cek organisasi sudah ada
+  set_fact:
+    org_exists: "{{ org_list.json | selectattr('name', 'equalto', thehive_org_name) | list | length > 0 }}"
+
+- name: Buat organisasi {{ thehive_org_name }}
+  uri:
+    url: "{{ thehive_url }}/api/organisation"
+    method: POST
+    user: "{{ thehive_admin_user }}"
+    password: "{{ thehive_admin_pass }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: "{{ thehive_org_name }}"
+      description: "{{ thehive_org_description }}"
+    status_code: [200, 201]
+    return_content: yes
+  register: org_create
+  when: not org_exists | bool
+
+- name: Info organisasi
+  debug:
+    msg: "Organisasi {{ thehive_org_name }}: {{ 'SUDAH ADA' if org_exists | bool else 'BERHASIL DIBUAT' }}"
+
+# ══════════════════════════════════════════════════
+# Step 3: Cek dan buat user soar-bot@miks.lab
+# ══════════════════════════════════════════════════
+
+- name: Cek apakah user {{ soar_bot_login }} sudah ada
+  uri:
+    url: "{{ thehive_url }}/api/v1/user/{{ soar_bot_login }}"
+    method: GET
+    user: "{{ thehive_admin_user }}"
+    password: "{{ thehive_admin_pass }}"
+    force_basic_auth: yes
+    status_code: [200, 404]
+  register: user_check
+  failed_when: false
+
+- name: Buat user {{ soar_bot_login }} (org-admin di {{ thehive_org_name }})
+  uri:
+    url: "{{ thehive_url }}/api/v1/user"
+    method: POST
+    user: "{{ thehive_admin_user }}"
+    password: "{{ thehive_admin_pass }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      login: "{{ soar_bot_login }}"
+      name: "{{ soar_bot_name }}"
+      profile: "org-admin"
+      organisation: "{{ thehive_org_name }}"
+      password: "{{ soar_bot_password }}"
+    status_code: [200, 201]
+    return_content: yes
+  register: user_create
+  when: user_check.status == 404
+
+- name: Info user
+  debug:
+    msg: "User {{ soar_bot_login }}: {{ 'SUDAH ADA' if user_check.status == 200 else 'BERHASIL DIBUAT' }}"
+
+# ══════════════════════════════════════════════════
+# Step 4: Generate API key untuk soar-bot
+# ══════════════════════════════════════════════════
+
+- name: Cek apakah API key file sudah tersimpan
   stat:
-    path: /home/azureuser/.thehive_api_key
+    path: "{{ thehive_api_key_file }}"
   register: api_key_file
 
-- name: Generate API key jika belum ada
+- name: Generate API key untuk {{ soar_bot_login }}
   uri:
-    url: "http://localhost:9000/api/v1/user/admin@thehive.local/key/renew"
+    url: "{{ thehive_url }}/api/v1/user/{{ soar_bot_login }}/key/renew"
     method: POST
-    user: "admin@thehive.local"
-    password: "secret"
+    user: "{{ thehive_admin_user }}"
+    password: "{{ thehive_admin_pass }}"
     force_basic_auth: yes
     status_code: [200, 201]
     return_content: yes
   register: api_key_result
   when: not api_key_file.stat.exists
-  failed_when: false
 
-- name: Simpan API key ke file
+# ══════════════════════════════════════════════════
+# Step 5: Simpan API key ke file
+# ══════════════════════════════════════════════════
+
+- name: Simpan API key ke {{ thehive_api_key_file }}
   copy:
-    content: "{{ api_key_result.content | regex_replace('\"', '') }}"
-    dest: /home/azureuser/.thehive_api_key
+    content: "{{ api_key_result.content | regex_replace('\"', '') | trim }}"
+    dest: "{{ thehive_api_key_file }}"
+    owner: azureuser
+    group: azureuser
     mode: '0600'
   when:
     - not api_key_file.stat.exists
     - api_key_result is defined
+    - api_key_result.status is defined
     - api_key_result.status in [200, 201]
 
-- name: Tampilkan API key
+# ══════════════════════════════════════════════════
+# Step 6: Tampilkan API key di output
+# ══════════════════════════════════════════════════
+
+- name: Baca API key dari file
   slurp:
-    src: /home/azureuser/.thehive_api_key
+    src: "{{ thehive_api_key_file }}"
   register: stored_key
   failed_when: false
 
-- name: Info API key TheHive
-  debug:
-    msg: "TheHive API Key: {{ stored_key.content | b64decode | trim }}"
+- name: Set fact thehive_api_key
+  set_fact:
+    thehive_api_key: "{{ stored_key.content | b64decode | trim }}"
   when: stored_key.content is defined
+
+- name: "═══ TheHive API Key ({{ soar_bot_login }}) ═══"
+  debug:
+    msg: "{{ thehive_api_key }}"
+  when: thehive_api_key is defined

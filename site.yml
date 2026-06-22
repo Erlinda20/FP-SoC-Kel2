@@ -1,10 +1,10 @@
 ---
 # ============================================================
-# SOAR Auto-Recovery Playbook
+# SOAR Auto-Recovery Playbook (Idempotent)
 # Jalankan: ansible-playbook -i inventory/hosts.ini site.yml
 # ============================================================
 
-- name: Setup iptables persistent di agent-02
+- name: Setup iptables + systemd web server di agent-02
   hosts: vm-agent-02
   become: true
   roles:
@@ -22,8 +22,14 @@
   roles:
     - docker_stack
 
-- name: Init TheHive user + API key
+- name: Init TheHive org + user + API key
   hosts: manager
-  become: false
+  become: true
   roles:
     - thehive_init
+
+- name: Setup n8n credentials + workflow
+  hosts: manager
+  become: true
+  roles:
+    - n8n_automation

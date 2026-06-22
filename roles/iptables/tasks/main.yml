@@ -1,4 +1,8 @@
 ---
+# ══════════════════════════════════════════════════
+# Agent-02 — iptables + systemd web server + ossec.conf template
+# ══════════════════════════════════════════════════
+
 - name: Install iptables-persistent
   apt:
     name: iptables-persistent
@@ -11,36 +15,109 @@
   changed_when: false
 
 - name: Pasang iptables LOG rule untuk DDoS detection
-  command: >
-    iptables -A INPUT -p tcp --syn --dport 80
-    -m limit --limit 50/s --limit-burst 100
-    -j LOG --log-prefix "FIREWALL_DDOS_ALERT: "
-  when: '"FIREWALL_DDOS_ALERT" not in iptables_rules.stdout'
+  command: >-
+    iptables -A INPUT -p tcp --syn --dport {{ victim_port }}
+    -m limit --limit {{ rate_limit }} --limit-burst {{ rate_burst }}
+    -j LOG --log-prefix "{{ log_prefix }}"
+  when: 'log_prefix not in iptables_rules.stdout'
 
 - name: Simpan iptables rules supaya persistent
   command: netfilter-persistent save
+  changed_when: false
 
-- name: Pastikan web server berjalan di port 80
-  shell: |
-    if ! ss -tlnp | grep -q ':80 '; then
-      nohup python3 -m http.server 80 > /tmp/http-server.log 2>&1 &
-      echo "started"
-    else
-      echo "already running"
-    fi
-  register: webserver_result
-  changed_when: "'started' in webserver_result.stdout"
+# ══════════════════════════════════════════════════
+# Systemd web server (menggantikan nohup)
+# ══════════════════════════════════════════════════
 
-- name: Pastikan kern.log dimonitor wazuh-agent
-  blockinfile:
+- name: Buat direktori /var/www/html
+  file:
+    path: /var/www/html
+    state: directory
+    mode: '0755'
+
+- name: Buat index.html sederhana
+  copy:
+    dest: /var/www/html/index.html
+    content: |
+      <html>
+      <head><title>SOAR Lab - Agent 02</title></head>
+      <body>
+        <h1>SOAR Lab - Agent 02</h1>
+        <p>Web server aktif. Managed by Ansible.</p>
+      </body>
+      </html>
+    mode: '0644'
+    force: no
+
+- name: Cek apakah soar-webserver service sudah terpasang
+  stat:
+    path: /etc/systemd/system/soar-webserver.service
+  register: webserver_service_file
+
+- name: Hentikan proses nohup python http.server lama jika ada
+  shell: pkill -f 'python3 -m http.server' || true
+  changed_when: false
+  failed_when: false
+  when: not webserver_service_file.stat.exists
+
+- name: Deploy systemd service soar-webserver
+  copy:
+    dest: /etc/systemd/system/soar-webserver.service
+    content: |
+      [Unit]
+      Description=SOAR Demo Web Server
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/bin/python3 -m http.server 80
+      WorkingDirectory=/var/www/html
+      Restart=always
+      User=root
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  register: webserver_unit
+
+- name: Reload systemd jika service file berubah
+  systemd:
+    daemon_reload: yes
+  when: webserver_unit.changed
+
+- name: Aktifkan dan jalankan soar-webserver
+  systemd:
+    name: soar-webserver
+    state: started
+    enabled: yes
+
+# ══════════════════════════════════════════════════
+# ossec.conf agent via Jinja2 template
+# ══════════════════════════════════════════════════
+
+- name: Backup ossec.conf agent sebelum modifikasi
+  copy:
+    src: /var/ossec/etc/ossec.conf
+    dest: "/var/ossec/etc/ossec.conf.bak.{{ ansible_date_time.iso8601_basic_short }}"
+    remote_src: yes
+    force: no
+  changed_when: false
+  failed_when: false
+
+- name: Hapus duplikat ANSIBLE MANAGED blocks dari ossec.conf agent
+  replace:
     path: /var/ossec/etc/ossec.conf
-    marker: "<!-- {mark} ANSIBLE MANAGED - kern.log -->"
-    insertbefore: "</ossec_config>"
-    block: |
-      <localfile>
-        <log_format>syslog</log_format>
-        <location>/var/log/kern.log</location>
-      </localfile>
+    regexp: '<!-- BEGIN ANSIBLE MANAGED.*?<!-- END ANSIBLE MANAGED[^>]*-->\s*'
+    replace: ''
+  failed_when: false
+
+- name: Deploy ossec.conf agent dari template Jinja2
+  template:
+    src: ossec_agent.conf.j2
+    dest: /var/ossec/etc/ossec.conf
+    owner: root
+    group: wazuh
+    mode: '0640'
+    backup: yes
   notify: restart wazuh-agent
 
 - name: Tambahkan wazuh ke grup adm supaya bisa baca kern.log
