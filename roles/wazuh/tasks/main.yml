@@ -130,3 +130,72 @@
     name: wazuh-manager
     state: started
     enabled: yes
+
+# ── Deploy Integratord (custom-n8n.py) ──
+- name: Deploy custom-n8n.py integration script
+  copy:
+    dest: /var/ossec/integrations/custom-n8n.py
+    content: |
+      #!/usr/bin/env python3
+      import sys
+      import json
+      try:
+          import requests
+      except ImportError:
+          import os
+          os.system("pip3 install requests")
+          import requests
+
+      def main():
+          if len(sys.argv) < 4:
+              sys.exit(1)
+          
+          alert_file = sys.argv[1]
+          # user = sys.argv[2]
+          hook_url = sys.argv[3]
+
+          with open(alert_file) as f:
+              alert_json = json.load(f)
+
+          headers = {'content-type': 'application/json'}
+          try:
+              requests.post(hook_url, json=alert_json, headers=headers, timeout=10)
+          except Exception as e:
+              with open('/var/ossec/logs/integrations.log', 'a') as log:
+                  log.write(f"Error sending to n8n: {e}\n")
+              sys.exit(1)
+          sys.exit(0)
+
+      if __name__ == "__main__":
+          main()
+    owner: root
+    group: wazuh
+    mode: '0750'
+  notify: restart wazuh-manager
+
+- name: Tambahkan integratord config ke ossec.conf
+  shell: |
+    python3 << 'EOF'
+    import re
+    with open('/var/ossec/etc/ossec.conf', 'r') as f:
+        content = f.read()
+    pre_count = content.count('<name>custom-n8n.py</name>')
+    if pre_count == 0:
+        block = """
+  <integration>
+    <name>custom-n8n.py</name>
+    <hook_url>http://localhost:5678/webhook/wazuh-ddos-alert</hook_url>
+    <level>10</level>
+    <alert_format>json</alert_format>
+  </integration>
+"""
+        content = content.replace('</ossec_config>', block + '\n</ossec_config>')
+        with open('/var/ossec/etc/ossec.conf', 'w') as f:
+            f.write(content)
+        print("changed")
+    else:
+        print("ok")
+    EOF
+  register: integratord_update
+  changed_when: integratord_update.stdout == 'changed'
+  notify: restart wazuh-manager

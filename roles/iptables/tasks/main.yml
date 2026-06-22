@@ -110,14 +110,28 @@
     replace: ''
   failed_when: false
 
-- name: Deploy ossec.conf agent dari template Jinja2
-  template:
-    src: ossec_agent.conf.j2
-    dest: /var/ossec/etc/ossec.conf
-    owner: root
-    group: wazuh
-    mode: '0640'
-    backup: yes
+- name: Tambahkan kern.log monitoring ke ossec.conf agent
+  shell: |
+    python3 << 'EOF'
+    import re
+    with open('/var/ossec/etc/ossec.conf', 'r') as f:
+        content = f.read()
+    if '<location>/var/log/kern.log</location>' not in content:
+        block = """
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/kern.log</location>
+  </localfile>
+"""
+        content = content.replace('</ossec_config>', block + '\n</ossec_config>')
+        with open('/var/ossec/etc/ossec.conf', 'w') as f:
+            f.write(content)
+        print("changed")
+    else:
+        print("ok")
+    EOF
+  register: agent_kern_log
+  changed_when: agent_kern_log.stdout == 'changed'
   notify: restart wazuh-agent
 
 - name: Tambahkan wazuh ke grup adm supaya bisa baca kern.log

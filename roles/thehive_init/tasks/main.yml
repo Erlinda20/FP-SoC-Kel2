@@ -105,9 +105,13 @@
     path: "{{ thehive_api_key_file }}"
   register: api_key_file
 
-- name: Generate API key untuk {{ soar_bot_login }}
+- name: Ambil _id dari user {{ soar_bot_login }}
+  set_fact:
+    soar_bot_id: "{{ user_create.json._id if (user_create.json is defined and '_id' in user_create.json) else (user_check.json._id if (user_check.json is defined and '_id' in user_check.json) else soar_bot_login) }}"
+
+- name: Generate API key untuk {{ soar_bot_login }} (ID: {{ soar_bot_id }})
   uri:
-    url: "{{ thehive_url }}/api/v1/user/{{ soar_bot_login }}/key/renew"
+    url: "{{ thehive_url }}/api/v1/user/{{ soar_bot_id }}/key/renew"
     method: POST
     user: "{{ thehive_admin_user }}"
     password: "{{ thehive_admin_pass }}"
