@@ -42,39 +42,61 @@ Proyek ini di-deploy secara otomatis menggunakan **Infrastructure as Code (IaC) 
 - **Wazuh Agents:** Dideploy di node endpoints (`vm-agent-01`, `vm-agent-02`).
 - **SOAR Platform:** Menggunakan **n8n** (Automasi Workflow) dan **TheHive 5** (Incident Management), berjalan via Docker Stack di Manager.
 
-### 2. Cara Menjalankan (How to Run) via IaC Ansible
+### 2. Panduan Setup & Menjalankan Lingkungan (How to Run)
 
-Proyek ini telah dibungkus dalam Ansible Playbook yang *idempotent* dan sepenuhnya otomatis, meminimalisir konfigurasi manual.
+Proyek ini telah dibungkus dalam Ansible Playbook yang *idempotent* dan sepenuhnya otomatis. Ikuti panduan ini untuk membangun lingkungan dari nol:
 
-**Persiapan:**
-1. Clone repositori ini ke *control node* (misal: WSL atau mesin lokal Linux).
-2. Pastikan `ansible` sudah terinstal di sistem Anda.
-3. Sesuaikan `inventory/hosts.ini` dengan IP publik Azure VM Anda dan path menuju kunci SSH `.pem`.
-4. Untuk automasi n8n, buat API Key secara manual melalui UI n8n, lalu simpan kuncinya di file manager VM: 
+**Langkah 1: Persiapan Server & Ansible**
+1. Clone repositori ini ke mesin *control node* (misal: WSL atau mesin lokal Linux).
+2. Sesuaikan file `inventory/hosts.ini` dengan IP publik Azure VM Anda dan pastikan *path* kunci SSH `.pem` sudah benar.
+3. Jalankan instalasi awal stack Ansible:
    ```bash
-   echo "YOUR_API_KEY" > ~/.n8n_api_key
+   ansible-playbook -i inventory/hosts.ini site.yml
+   ```
+   *(Tunggu hingga proses selesai. Playbook ini akan menginstal Wazuh, mengonfigurasi iptables korban, dan menjalankan kontainer Docker n8n + TheHive di Manager).*
+
+**Langkah 2: Menyiapkan Akses API n8n**
+Agar Ansible bisa memasukkan *workflow* ke dalam n8n secara otomatis, kita butuh API Key dari n8n:
+1. Buka browser dan akses n8n di: `http://<IP_Manager>:5678`
+2. Buat akun admin n8n (untuk pertama kali setup).
+3. Masuk ke **Settings > n8n API**, lalu klik **Create API Key**.
+4. *Copy* API Key tersebut.
+5. Kembali ke terminal Server Manager (`vm-wazuh-manager`), simpan key tersebut ke dalam file:
+   ```bash
+   echo "Masukkan_API_Key_n8n_Disini" > ~/.n8n_api_key
    ```
 
-**Eksekusi Deployment:**
-Jalankan perintah berikut di root repositori:
+**Langkah 3: Finalisasi Konfigurasi (Run Kedua)**
+Jalankan ulang playbook agar Ansible bisa membaca API Key n8n dan memasukkan semua *workflow* SOAR serta melakukan inisialisasi TheHive:
 ```bash
 ansible-playbook -i inventory/hosts.ini site.yml
 ```
 
-**Apa yang dilakukan playbook?**
-- Mempersiapkan konfigurasi jaringan, `iptables`, dan *systemd webserver* di agen korban.
-- Melakukan sinkronisasi Wazuh Manager, menginjeksi aturan deteksi kustom, dan mengkonfigurasi *Active Response* secara dinamis tanpa merusak file asli.
-- Memastikan Docker Stack SOAR (Elasticsearch, n8n, TheHive) berjalan sempurna.
-- Menginisialisasi TheHive secara otomatis via REST API (membuat Organisasi, mendaftarkan User, dan meregenerasi API Key).
-- Melakukan automasi penuh di n8n via API (merakit *credentials* TheHive/SSH, mengimpor alur kerja respon otomatis, dan mem-publish-nya).
+### 3. Simulasi Serangan & Pertahanan (Attack & Defense)
 
-### 3. Scenario & SIEM Detection
+Sistem SIEM diuji untuk mendeteksi tiga vektor serangan utama. Berikut adalah panduan *direct* untuk melakukan simulasi serangan DDoS dan melihat respons otomatis SOAR:
 
-Sistem SIEM diuji untuk mendeteksi tiga vektor serangan utama:
+**A. Melakukan Serangan (Dari vm-agent-01 / Attacker)**
+1. SSH ke dalam mesin penyerang (`vm-agent-01`).
+2. Jalankan perintah `hping3` untuk melakukan **SYN Flood** ke IP privat mesin korban (`vm-agent-02` - misal: 10.0.1.6):
+   ```bash
+   sudo hping3 -S --flood -V -p 80 10.0.1.6
+   ```
+   *(Biarkan perintah ini berjalan selama 5-10 detik, lalu hentikan dengan `Ctrl+C`)*.
 
-- **DDoS (SYN Flood):** Disimulasikan menggunakan `hping3` dari agen penyerang. Agen korban mencatat trafik berlebih menggunakan batas log `iptables` (dibatasi 50 baris/detik untuk mencegah disk penuh), yang kemudian ditangkap Wazuh untuk memicu *Rule Level 12* (Massive SYN Flood Traffic).
-- **Malware:** *[Tulis detail eksekusi dan deteksi malware di sini]*
-- **Social Engineering:** *[Tulis detail eksekusi dan deteksi social engineering di sini]*
+**B. Memantau Deteksi & Respons (Defense Validation)**
+Setelah serangan diluncurkan, periksa 3 lapisan pertahanan berikut untuk membuktikan SOAR berjalan:
+1. **Verifikasi Wazuh Alert:** Buka Dashboard Wazuh di `https://<IP_Manager>`. Cek halaman *Security Events*. Pastikan **Rule Level 12 (Massive SYN Flood Traffic)** muncul merah.
+2. **Verifikasi Blokir IP di Korban:** SSH ke mesin korban (`vm-agent-02`) dan cek `iptables`. IP penyerang harus berada di aturan `DROP`:
+   ```bash
+   sudo iptables -L INPUT -n -v | grep DROP
+   ```
+3. **Verifikasi Insiden TheHive:** Buka TheHive di `http://<IP_Manager>:9000` (Login: `admin@thehive.local` / `secret`). Cek tab **Cases**. Sebuah insiden baru otomatis terbuat berisi IP penyerang sebagai *Observable*.
+
+*(Untuk Malware dan Social Engineering, silakan tambahkan langkah eksploitasi dan deteksinya di bawah ini)*
+
+- **Malware:** *[Tulis langkah simulasi eksekusi dan deteksi malware di sini]*
+- **Social Engineering:** *[Tulis langkah simulasi eksekusi dan deteksi social engineering di sini]*
 
 **Grafik dan Alert SIEM:**
 - ![Alert Dashboard Wazuh](assets/06_Grafik_Alert_Level12.png)
