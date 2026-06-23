@@ -1,0 +1,38 @@
+{
+    "timestamp": "2026-06-23T04:08:19.123+0000",
+    "rule": {
+        "level": 12,
+        "description": "Massive SYN Flood Traffic Detected by Network Firewall",
+        "id": "100004",
+        "firedtimes": 95,
+        "mail": false,
+        "groups": [
+            "local",
+            "ddos",
+            "syslog",
+            "attack"
+        ]
+    },
+    "agent": {
+        "id": "002",
+        "name": "vm-agent-02",
+        "ip": "10.0.1.6"
+    },
+    "manager": {
+        "name": "vm-wazuh-manager"
+    },
+    "id": "1719115699.234512",
+    "full_log": "Jun 23 04:08:19 vm-agent-02 kernel: [ 1889.602097] FIREWALL_DDOS_ALERT: IN=eth0 OUT= MAC=60:45:bd:56:73:23:00:0d:3a:81:4e:6b:08:00 SRC=10.0.1.5 DST=10.0.1.6 LEN=40 TOS=0x00 PREC=0x00 TTL=64 ID=19000 PROTO=TCP SPT=2454 DPT=80 WINDOW=512 RES=0x00 SYN URGP=0",
+    "decoder": {
+        "name": "iptables"
+    },
+    "data": {
+        "action": "FIREWALL_DDOS_ALERT",
+        "srcip": "10.0.1.5",
+        "dstip": "10.0.1.6",
+        "protocol": "TCP",
+        "srcport": "2454",
+        "dstport": "80"
+    },
+    "location": "/var/log/kern.log"
+}
