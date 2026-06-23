@@ -1,0 +1,200 @@
+{
+  "name": "MIKS-SOAR: DDoS Auto-Response",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wazuh-ddos-alert",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "828c81fd-3795-4ad2-bec3-bd7783c78831",
+              "leftValue": "={{ $('Webhook').item.json.body.attack_type != null ? 1 : 0 }}",
+              "rightValue": 12,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [208, 0],
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "=ATTACKER=\"{{ $('Webhook').item.json.body.attacker_ip }}\"\nif [ \"$ATTACKER\" != \"unknown\" ] && [ -n \"$ATTACKER\" ]; then\n  EXISTING=$(sudo iptables -L INPUT -n | grep \"$ATTACKER\" | grep DROP)\n  if [ -z \"$EXISTING\" ]; then\n    sudo iptables -I INPUT 1 -s \"$ATTACKER\" -j DROP\n    echo \"BLOCKED: $ATTACKER at $(date)\"\n  else\n    echo \"ALREADY_BLOCKED: $ATTACKER\"\n  fi\nelse\n  echo \"SKIP: invalid attacker IP\"\nfi"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [416, -96],
+      "name": "SSH - Block IP"
+    },
+    {
+      "parameters": {
+        "resource": "case",
+        "caseFields": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "=DDoS SYN Flood \u2014 {{ $('Webhook').item.json.body.attacker_ip }}",
+            "description": "=Serangan DDoS SYN Flood terdeteksi oleh Wazuh rule 100004 (Level {{ $('Webhook').item.json.body.alert_level }}). Attacker IP: {{ $('Webhook').item.json.body.attacker_ip }}. Victim: {{ $('Webhook').item.json.body.victim_agent }} ({{ $('Webhook').item.json.body.victim_ip }}). Timestamp: {{ $('Webhook').item.json.body.timestamp }}. Mitigasi iptables telah dijalankan secara otomatis.",
+            "severity": 3,
+            "tags": "ddos, syn-flood, auto-mitigated, wazuh",
+            "tlp": 1
+          },
+          "matchingColumns": [],
+          "schema": []
+        }
+      },
+      "type": "n8n-nodes-base.theHiveProject",
+      "typeVersion": 1,
+      "position": [624, -96],
+      "name": "Create Case"
+    },
+    {
+      "parameters": {
+        "resource": "observable",
+        "id": {
+          "__rl": true,
+          "value": "={{ $json._id }}",
+          "mode": "id"
+        },
+        "observableFields": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ioc": false,
+            "sighted": false,
+            "ignoreSimilarity": false,
+            "message": "IP sumber serangan DDoS SYN Flood",
+            "tags": "attacker, ddos-source"
+          },
+          "matchingColumns": [],
+          "schema": []
+        }
+      },
+      "type": "n8n-nodes-base.theHiveProject",
+      "typeVersion": 1,
+      "position": [832, -96],
+      "name": "Create an observable"
+    },
+    {
+      "parameters": {
+        "url": "http://10.0.1.4:5000/predict",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alert_level",
+              "value": "={{ $('Webhook').item.json.body.alert_level }}"
+            },
+            {
+              "name": "rule_id",
+              "value": "={{ $('Webhook').item.json.body.rule_id }}"
+            },
+            {
+              "name": "attacker_ip",
+              "value": "={{ $('Webhook').item.json.body.attacker_ip }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $('Webhook').item.json.body.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [416, 120],
+      "name": "AI Module (Placeholder)"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "SSH - Block IP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Module (Placeholder)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH - Block IP": {
+      "main": [
+        [
+          {
+            "node": "Create Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Case": {
+      "main": [
+        [
+          {
+            "node": "Create an observable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
