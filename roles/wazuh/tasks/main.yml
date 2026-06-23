@@ -14,8 +14,9 @@
           <match>FIREWALL_DDOS_ALERT</match>
           <description>iptables: DDoS log entry terdeteksi</description>
         </rule>
-        <rule id="100004" level="12" frequency="10" timeframe="5">
+        <rule id="100004" level="12" frequency="10" timeframe="5" ignore="60">
           <if_matched_sid>100001</if_matched_sid>
+          <same_source_ip />
           <match>SYN</match>
           <description>Massive SYN Flood Traffic Detected by Network Firewall</description>
           <group>attack,ddos,</group>
