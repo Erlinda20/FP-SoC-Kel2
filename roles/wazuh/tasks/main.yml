@@ -163,10 +163,10 @@
     state: started
     enabled: yes
 
-- name: Fix koneksi Wazuh Dashboard ke Indexer (Ganti 127.0.0.1 ke IP internal)
+- name: Fix koneksi Wazuh Dashboard ke Indexer (Ganti localhost ke IP internal)
   replace:
     path: /etc/wazuh-dashboard/opensearch_dashboards.yml
-    regexp: 'https://127\.0\.0\.1:9200'
+    regexp: 'https://localhost:9200'
     replace: 'https://10.0.1.4:9200'
   notify: restart wazuh-dashboard
 
