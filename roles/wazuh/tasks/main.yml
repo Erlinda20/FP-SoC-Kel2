@@ -188,6 +188,7 @@
   delay: 10
   until: wazuh_dashboard_check.status in [200, 302, 401]
   failed_when: false
+  ignore_errors: true
 
 # ── Deploy Integratord (custom-n8n.py) ──
 - name: Deploy custom-n8n.py integration script
