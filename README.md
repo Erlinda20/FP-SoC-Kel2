@@ -241,6 +241,67 @@ n8n meneruskan ke jalur REVIEW dan membuat task analis di TheHive, serta mencata
 ![false positive](assets/review_false_positive_1.png)
 ![false positif 2](assets/review_false_positive_2.png)
 
+- Log False Positive
+```
+[
+  {
+    "_id": "~245780592",
+    "_type": "Case",
+    "_createdBy": "soar-bot@miks.lab",
+    "_createdAt": 1782313083984,
+    "number": 2039,
+    "title": "[FP]  — Dismissed by AI",
+    "description": "Alert ini diklasifikasikan sebagai FALSE POSITIVE oleh AI dengan confidence 0.7.\n\nTidak ada aksi yang diambil. Log disimpan untuk audit.",
+    "severity": 1,
+    "severityLabel": "LOW",
+    "startDate": 1782313083979,
+    "tags": [
+      "false-positive",
+      "dismissed",
+      "ai-classified"
+    ],
+    "flag": false,
+    "tlp": 0,
+    "tlpLabel": "CLEAR",
+    "pap": 2,
+    "papLabel": "AMBER",
+    "status": "New",
+    "stage": "New",
+    "assignee": "soar-bot@miks.lab",
+    "customFields": [],
+    "userPermissions": [
+      "manageCase/create",
+      "manageAlert/update",
+      "manageProcedure",
+      "managePage",
+      "manageObservable",
+      "manageCase/delete",
+      "manageAlert/create",
+      "manageCaseReport",
+      "manageAlert/delete",
+      "accessTheHiveFS",
+      "manageKnowledgeBase",
+      "manageAction",
+      "manageShare",
+      "manageAnalyse",
+      "manageFunction/invoke",
+      "manageTask",
+      "manageCase/merge",
+      "manageCustomEvent",
+      "manageAlert/import",
+      "manageCase/changeOwnership",
+      "manageComment",
+      "manageAlert/reopen",
+      "manageCase/update",
+      "manageCase/reopen"
+    ],
+    "extraData": {},
+    "newDate": 1782313083979,
+    "timeToDetect": 0
+  }
+]
+```
+
 
 
 
