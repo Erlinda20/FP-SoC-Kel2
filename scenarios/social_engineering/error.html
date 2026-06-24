@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIAKAD — Sesi Berakhir | UNT</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 56px 48px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .icon-wrap {
+      width: 72px; height: 72px;
+      background: #fef2f2;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+    }
+    .icon-wrap svg { width: 36px; }
+    h1 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 12px; }
+    p  { font-size: 14px; color: #6b7280; line-height: 1.7; margin-bottom: 8px; }
+    .session-id {
+      background: #f9fafb; border: 1px solid #e5e7eb;
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 12px; color: #9ca3af; font-family: monospace;
+      margin: 20px 0;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 8px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #2563eb, #1a3a82);
+      color: white; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 10px; cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .footer-note { margin-top: 24px; font-size: 11.5px; color: #9ca3af; }
+    .countdown { font-weight: 700; color: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-wrap">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="16" fill="#fee2e2"/>
+        <path d="M18 10v9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="18" cy="24" r="1.5" fill="#ef4444"/>
+      </svg>
+    </div>
+
+    <h1>Autentikasi Gagal</h1>
+    <p>NIM/NIP atau password yang Anda masukkan tidak sesuai dengan data kami.</p>
+    <p>Jika Anda kesulitan login, silakan hubungi Helpdesk TI Universitas.</p>
+
+    <div class="session-id">
+      Session ID: UNT-<span id="sid"></span> &nbsp;|&nbsp; Error Code: AUTH_401
+    </div>
+
+    <p style="font-size:13px; color:#374151;">
+      Anda akan diarahkan kembali ke halaman login dalam
+      <span class="countdown" id="cd">5</span> detik.
+    </p>
+
+    <a href="/" class="btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Kembali ke Login
+    </a>
+
+    <p class="footer-note">
+      Butuh bantuan? Hubungi: <strong>helpdesk@unt.ac.id</strong> atau ext. <strong>1234</strong>
+    </p>
+  </div>
+
+  <script>
+    // Generate random session ID
+    document.getElementById('sid').textContent =
+      Math.random().toString(36).substr(2,8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+
+    // Countdown redirect
+    let t = 5;
+    const el = document.getElementById('cd');
+    const iv = setInterval(() => {
+      t--;
+      el.textContent = t;
+      if (t <= 0) { clearInterval(iv); window.location.href = '/'; }
+    }, 1000);
+  </script>
+</body>
+</html>

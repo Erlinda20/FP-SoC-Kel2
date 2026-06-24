@@ -1,0 +1,141 @@
+<!-- ================================================================
+     Wazuh Custom Rules — Social Engineering Detection
+     File: /var/ossec/rules/local_rules.xml (APPEND ke yang ada)
+     ================================================================ -->
+
+<group name="local,social_engineering,authentication,phishing,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Brute Force SSH — Multiple failed logins same IP
+       Deteksi: Banyak kegagalan login SSH dari 1 IP dalam 60 detik
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100020" level="8" frequency="5" timeframe="60">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_source_ip />
+    <description>Social Engineering: Multiple SSH login failures from same IP - possible brute force</description>
+    <group>authentication_failed,social_engineering,brute_force,</group>
+    <mitre>
+      <id>T1110</id><!-- Brute Force -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Login berhasil setelah banyak gagal (credential stuffing)
+       Deteksi: Login sukses setelah sebelumnya ada banyak failure
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100021" level="12">
+    <if_matched_group>authentication_failed</if_matched_group>
+    <if_sid>5715</if_sid>
+    <same_source_ip />
+    <description>Social Engineering: Successful login after multiple failures - possible stolen credential</description>
+    <group>authentication_success,social_engineering,account_takeover,</group>
+    <mitre>
+      <id>T1078</id><!-- Valid Accounts -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Login dengan username tidak valid berulang
+       Deteksi: Attacker mencoba username list (credential stuffing)
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100022" level="8" frequency="3" timeframe="120">
+    <if_matched_sid>5710</if_matched_sid>
+    <match>Invalid user</match>
+    <same_source_ip />
+    <description>Social Engineering: Multiple invalid username attempts - possible credential list attack</description>
+    <group>authentication_failed,social_engineering,</group>
+    <mitre>
+      <id>T1110.001</id><!-- Password Guessing -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Phishing credential submission terdeteksi di log
+       Deteksi: Tag PHISHING_ALERT di syslog (dari phishing server)
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100023" level="9">
+    <match>PHISHING_ALERT</match>
+    <description>Social Engineering: Phishing activity detected from application log</description>
+    <group>social_engineering,phishing,web,</group>
+    <mitre>
+      <id>T1566</id><!-- Phishing -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: CRITICAL — Credential berhasil dipanen (HIGH SEVERITY)
+       Deteksi: Tag CREDENTIAL_HARVESTED dari phishing server
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100025" level="14">
+    <match>CREDENTIAL_HARVESTED</match>
+    <description>CRITICAL: Credential harvested via phishing attack - immediate response required</description>
+    <group>social_engineering,phishing,credential_theft,attack,</group>
+    <mitre>
+      <id>T1566.002</id><!-- Phishing: Spearphishing Link -->
+      <id>T1589.001</id><!-- Gather Victim Identity Information: Credentials -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Post-compromise — akses file sensitif setelah anomali login
+       Deteksi: Aktivitas mencurigakan setelah akun dikompromis
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100026" level="11">
+    <match>POSTCOMPROMISE</match>
+    <description>Social Engineering: Post-compromise activity detected - possible account takeover</description>
+    <group>social_engineering,post_compromise,data_access,</group>
+    <mitre>
+      <id>T1078</id><!-- Valid Accounts -->
+      <id>T1087</id><!-- Account Discovery -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Data exfiltration setelah kompromi
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100027" level="13">
+    <match>DATA_EXFILTRATION_ATTEMPT</match>
+    <description>Social Engineering: Data exfiltration attempt after phishing compromise</description>
+    <group>social_engineering,exfiltration,attack,</group>
+    <mitre>
+      <id>T1041</id><!-- Exfiltration Over C2 Channel -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Reconnaissance / port scan terdeteksi
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100028" level="7">
+    <match>PORT_SCAN_DETECTED</match>
+    <description>Social Engineering Recon: Port scan detected - pre-attack reconnaissance</description>
+    <group>social_engineering,reconnaissance,</group>
+    <mitre>
+      <id>T1595</id><!-- Active Scanning -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Lateral movement setelah kompromi
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100029" level="12">
+    <match>LATERAL_MOVEMENT_ATTEMPT</match>
+    <description>Social Engineering: Lateral movement attempt after credential theft</description>
+    <group>social_engineering,lateral_movement,attack,</group>
+    <mitre>
+      <id>T1021</id><!-- Remote Services -->
+    </mitre>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RULE: Phishing infrastructure terdeteksi di-deploy
+       ═══════════════════════════════════════════════════════════ -->
+  <rule id="100030" level="10">
+    <match>PHISHING_INFRASTRUCTURE_DEPLOYED</match>
+    <description>Social Engineering: Phishing infrastructure deployed on internal network</description>
+    <group>social_engineering,phishing,infrastructure,</group>
+    <mitre>
+      <id>T1583</id><!-- Acquire Infrastructure -->
+    </mitre>
+  </rule>
+
+</group>
