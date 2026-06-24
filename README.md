@@ -224,6 +224,7 @@ Kami mengintegrasikan model AI hibrida berbasis **Ensemble Machine Learning** da
 <img width="1920" height="910" alt="image5" src="https://github.com/user-attachments/assets/7d422b39-96ec-4e1a-b125-4cd8df7bdd78" />
 
 - Tes 6
+  
 Alert dengan rule_level: 13, firedtimes: 1, dan attacker_ip: 0.0.0.0 dikirim untuk menguji jalur REVIEW dan False Positive:
 ```
 curl -X POST http://10.0.1.4:5678/webhook-test/wazuh-ddos-alert \
