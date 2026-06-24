@@ -29,7 +29,7 @@
       </group>
     owner: root
     group: wazuh
-    mode: '0640'
+    mode: "0640"
   notify: restart wazuh-manager
 
 # ── Deploy active response script ──
@@ -77,7 +77,7 @@
       exit 0
     owner: root
     group: wazuh
-    mode: '0750'
+    mode: "0750"
   notify: restart wazuh-manager
 
 - name: Buat webhook log file
@@ -86,7 +86,7 @@
     state: touch
     owner: root
     group: wazuh
-    mode: '0664'
+    mode: "0664"
   changed_when: false
 
 # ── Patch ossec.conf secara idempotent menggunakan script Python ──
@@ -132,6 +132,43 @@
     state: started
     enabled: yes
 
+- name: Cek apakah wazuh-dashboard sudah terinstall
+  stat:
+    path: /etc/wazuh-dashboard/opensearch_dashboards.yml
+  register: dashboard_conf
+
+- name: Download Wazuh installation assistant
+  get_url:
+    url: https://packages.wazuh.com/4.7/wazuh-install.sh
+    dest: /tmp/wazuh-install.sh
+    mode: '0755'
+  when: not dashboard_conf.stat.exists
+
+- name: Install Wazuh Dashboard & Indexer (All-in-one)
+  command: bash /tmp/wazuh-install.sh -a
+  args:
+    creates: /var/wazuh-install-files.tar
+  when: not dashboard_conf.stat.exists
+
+- name: Pastikan wazuh-dashboard berjalan
+  systemd:
+    name: wazuh-dashboard
+    state: started
+    enabled: yes
+
+
+- name: Tunggu wazuh-dashboard siap
+  uri:
+    url: "{{ wazuh_dashboard_url | default('https://127.0.0.1') }}"
+    method: GET
+    validate_certs: false
+    status_code: [200, 302, 401]
+  register: wazuh_dashboard_check
+  retries: 30
+  delay: 10
+  until: wazuh_dashboard_check.status in [200, 302, 401]
+  failed_when: false
+
 # ── Deploy Integratord (custom-n8n.py) ──
 - name: Deploy custom-n8n.py integration script
   copy:
@@ -168,7 +205,7 @@
           main()
     owner: root
     group: wazuh
-    mode: '0750'
+    mode: "0750"
   notify: restart wazuh-manager
 
 - name: Tambahkan integratord config ke ossec.conf
