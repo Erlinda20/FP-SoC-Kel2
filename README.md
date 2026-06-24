@@ -239,7 +239,7 @@ curl -X POST http://10.0.1.4:5678/webhook-test/wazuh-ddos-alert \
 ```
 n8n meneruskan ke jalur REVIEW dan membuat task analis di TheHive, serta mencatat False Positive ke log audit:
 ![false positive](assets/review_false_positive_1.png)
-![false positif 2](assets/review_false_positive_1.png)
+![false positif 2](assets/review_false_positive_2.png)
 
 
 
