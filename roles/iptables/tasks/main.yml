@@ -97,7 +97,7 @@
 - name: Backup ossec.conf agent sebelum modifikasi
   copy:
     src: /var/ossec/etc/ossec.conf
-    dest: "/var/ossec/etc/ossec.conf.bak.{{ ansible_date_time.iso8601_basic_short }}"
+    dest: "/var/ossec/etc/ossec.conf.bak.{{ ansible_facts.date_time.iso8601_basic_short }}"
     remote_src: yes
     force: no
   changed_when: false
