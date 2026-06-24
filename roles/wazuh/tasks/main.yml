@@ -150,6 +150,12 @@
     creates: /var/wazuh-install-files.tar
   when: not dashboard_conf.stat.exists
 
+- name: Pastikan wazuh-indexer berjalan
+  systemd:
+    name: wazuh-indexer
+    state: started
+    enabled: yes
+
 - name: Pastikan wazuh-dashboard berjalan
   systemd:
     name: wazuh-dashboard
