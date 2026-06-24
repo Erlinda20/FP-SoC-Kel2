@@ -3,3 +3,8 @@
   systemd:
     name: wazuh-manager
     state: restarted
+
+- name: restart wazuh-dashboard
+  systemd:
+    name: wazuh-dashboard
+    state: restarted
