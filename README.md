@@ -96,10 +96,63 @@ Setelah serangan diluncurkan, periksa 3 lapisan pertahanan berikut untuk membukt
    ```
 3. **Verifikasi Insiden TheHive:** Buka TheHive di `http://<IP_Manager>:9000` (Login: `admin@thehive.local` / `secret`). Cek tab **Cases**. Sebuah insiden baru otomatis terbuat berisi IP penyerang sebagai *Observable*.
 
-*(Untuk Malware dan Social Engineering, silakan tambahkan langkah eksploitasi dan deteksinya di bawah ini)*
+*(Untuk Malware dan Social Engineering, silakan ikuti langkah eksploitasi dan deteksinya di bawah ini)*
 
-- **Malware:** *[Tulis langkah simulasi eksekusi dan deteksi malware di sini]*
-- **Social Engineering:** *[Tulis langkah simulasi eksekusi dan deteksi social engineering di sini]*
+- **Malware:**
+  * **Sisi Korban (vm-agent-02 - Target Infeksi):**
+    1. Masuk ke terminal `vm-agent-02` menggunakan SSH:
+       ```bash
+       wsl ssh -i /home/khosy/.ssh/key-wazuh-agent02.pem azureuser@20.2.49.57
+       ```
+    2. Berikan izin eksekusi pada script malware yang telah dipindahkan oleh Ansible:
+       ```bash
+       chmod +x /home/azureuser/malware_attack.sh
+       ```
+    3. Jalankan script simulasi malware:
+       ```bash
+       sudo /home/azureuser/malware_attack.sh
+       ```
+       *(Script akan mensimulasikan file dropper backdoor, trigger signature EICAR, tiruan reverse shell, serta enkripsi ransomware di direktori `/tmp`)*.
+
+  * **Sisi Pemantauan & Respon Otomatis (SOC & SOAR):**
+    1. **Verifikasi Wazuh Dashboard:** Buka `https://20.255.112.239`, masuk ke *Security Events*. Cari alert **Rule 100012** (EICAR virus signature) dan **Rule 100013** (Reverse shell `bash -i`).
+    2. **Verifikasi Karantina Otomatis (di vm-agent-02):** 
+       Setelah alert terpicu, n8n otomatis masuk ke `vm-agent-02` untuk karantina. Pastikan file-file berbahaya telah terhapus otomatis:
+       ```bash
+       ls -la /tmp/backdoor.sh      # Harus: File tidak ditemukan
+       ls -la /tmp/*.enc            # Harus: File-file .enc hasil ransomware telah bersih
+       ```
+    3. **Verifikasi TheHive:** Buka portal TheHive. Insiden baru bertema *Malware* otomatis terdaftar di tab *Cases*.
+
+- **Social Engineering:**
+  * **Sisi Penyerang (vm-agent-01 - Attacker):**
+    1. Masuk ke terminal `vm-agent-01` menggunakan SSH:
+       ```bash
+       wsl ssh -i /home/khosy/.ssh/key-wazuh-agent01.pem azureuser@104.208.124.163
+       ```
+    2. Berikan izin eksekusi pada script penyerang:
+       ```bash
+       chmod +x /home/azureuser/social_engineering_attack.sh
+       ```
+    3. Jalankan script simulasi serangan:
+       ```bash
+       sudo /home/azureuser/social_engineering_attack.sh
+       ```
+       *(Script ini akan memindai port korban, men-deploy server web phishing di port 8080 korban, dan mensimulasikan korban menginput kredensial).*
+
+  * **Sisi Korban (vm-agent-02 - Target Phishing):**
+    1. Korban disimulasikan mengakses portal akademik palsu di `http://10.0.1.6:8080` dan memasukkan NIM/Password.
+    2. Setelah data dicuri, penyerang login menggunakan kredensial curian ke SSH korban, lalu mencoba mengunduh data sensitif keluar jaringan (Exfiltration) serta bergerak ke server lain (Lateral Movement).
+
+  * **Sisi Pemantauan & Respon Otomatis (SOC & SOAR):**
+    1. **Verifikasi Wazuh Dashboard:** Filter events dengan kata kunci `rule.groups: social_engineering`. Pastikan alert **Rule 100025** (Credential Harvested - Level 14) dan **Rule 100029** (Lateral Movement) muncul.
+    2. **Verifikasi Isolasi Firewall (di vm-agent-02):** 
+       n8n secara otomatis mengisolasi koneksi dengan memblokir lalu lintas keluar ke arah IP penyerang (`10.0.1.5`). Pastikan rule `DROP` telah terpasang di korban:
+       ```bash
+       sudo iptables -L OUTPUT -n -v | grep DROP
+       ```
+       *(Anda harus melihat IP `10.0.1.5` masuk daftar DROP)*.
+    3. **Verifikasi TheHive:** Kasus pencurian identitas baru otomatis dibuat di TheHive.
 
 **Grafik dan Alert SIEM:**
 - ![Alert Dashboard Wazuh](assets/06_Grafik_Alert_Level12.png)
