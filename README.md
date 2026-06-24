@@ -208,22 +208,21 @@ Kami mengintegrasikan model AI hibrida berbasis **Ensemble Machine Learning** da
 
     
 - **Bukti Eksekusi Skenario (Screenshot Demonstrasi)**
+
 - Tes 1
-<img width="1920" height="895" alt="image1 (2)" src="https://github.com/user-attachments/assets/88f7e04a-f906-449f-9eea-99817e4c7a94" />
+![Tes 1](assets/tes1.png)
 
 - Tes 2
-<img width="1920" height="895" alt="image2 (2)" src="https://github.com/user-attachments/assets/5ad84ba8-a0f0-4fe2-9c4b-666425acc32a" />
+![Tes 2](assets/tes2.png)
 
 - Tes 3
-<img width="1920" height="910" alt="image3 (2)" src="https://github.com/user-attachments/assets/2c642108-ecaa-4826-96e7-4d6dd6e8fa8f" />
+![Tes 3](assets/tes3.png)
 
 - Tes 4
-<img width="1920" height="910" alt="image4" src="https://github.com/user-attachments/assets/d03f0c1e-5676-4159-8ee5-0fae4cc351e8" />
+![Tes 4](assets/tes4.png)
 
 - Tes 5
-<img width="1920" height="910" alt="image5" src="https://github.com/user-attachments/assets/7d422b39-96ec-4e1a-b125-4cd8df7bdd78" />
-
-- Tes 6
+![Tes 5](assets/tes5.png)
   
 Alert dengan rule_level: 13, firedtimes: 1, dan attacker_ip: 0.0.0.0 dikirim untuk menguji jalur REVIEW dan False Positive:
 ```
@@ -239,8 +238,8 @@ curl -X POST http://10.0.1.4:5678/webhook-test/wazuh-ddos-alert \
  }'
 ```
 n8n meneruskan ke jalur REVIEW dan membuat task analis di TheHive, serta mencatat False Positive ke log audit:
-<img width="859" height="566" alt="image3" src="https://github.com/user-attachments/assets/c344a7d6-e6fc-418a-985e-a298afa0f370" />
-<img width="913" height="568" alt="image7" src="https://github.com/user-attachments/assets/f5844855-8f4e-4e8b-9ea9-191d36c15bf3" />
+![false positive](assets/review_false_positive_1.png)
+![false positif 2](assets/review_false_positive_1.png)
 
 
 
