@@ -150,6 +150,13 @@
     creates: /var/wazuh-install-files.tar
   when: not dashboard_conf.stat.exists
 
+- name: Set vm.max_map_count untuk Wazuh Indexer
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
 - name: Pastikan wazuh-indexer berjalan
   systemd:
     name: wazuh-indexer
