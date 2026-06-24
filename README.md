@@ -223,6 +223,26 @@ Kami mengintegrasikan model AI hibrida berbasis **Ensemble Machine Learning** da
 - Tes 5
 <img width="1920" height="910" alt="image5" src="https://github.com/user-attachments/assets/7d422b39-96ec-4e1a-b125-4cd8df7bdd78" />
 
+- Tes 6
+Alert dengan rule_level: 13, firedtimes: 1, dan attacker_ip: 0.0.0.0 dikirim untuk menguji jalur REVIEW dan False Positive:
+```
+curl -X POST http://10.0.1.4:5678/webhook-test/wazuh-ddos-alert \
+ -H "Content-Type: application/json" \
+ -d '{
+   "timestamp": "2026-06-24T11:34:46.144+0000",
+   "rule_level": 13,
+   "firedtimes": 1,
+   "rule_id": 100012,
+   "attacker_ip": "0.0.0.0",
+   "dst_port": 80
+ }'
+```
+n8n meneruskan ke jalur REVIEW dan membuat task analis di TheHive, serta mencatat False Positive ke log audit:
+<img width="859" height="566" alt="image3" src="https://github.com/user-attachments/assets/c344a7d6-e6fc-418a-985e-a298afa0f370" />
+<img width="913" height="568" alt="image7" src="https://github.com/user-attachments/assets/f5844855-8f4e-4e8b-9ea9-191d36c15bf3" />
+
+
+
 
 
 
