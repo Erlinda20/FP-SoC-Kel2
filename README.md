@@ -205,3 +205,26 @@ Kami mengintegrasikan model AI hibrida berbasis **Ensemble Machine Learning** da
      * *Relevansi & Kontribusi:* Penelitian ini memvalidasi penggunaan model XGBoost yang dioptimalkan secara khusus untuk mereduksi *False Positive Rate* (FPR) pada sistem deteksi intrusi jaringan. Melalui tuning hyperparameter yang terarah, model mampu membedakan anomali dari aktivitas aman secara presisi. Paper ini dapat diakses di [AJSE Article Portal](https://ajse.academyjsekad.edu.ng/index.php/new-ajse/article/view/832/305).
   2. **Ali, G., Shah, S., & ElAffendi, M. (2025). *Enhancing cybersecurity incident response: AI-driven optimization for strengthened advanced persistent threat detection* (Results in Engineering):**
      * *Relevansi & Kontribusi:* Penelitian ini berfokus pada pemanfaatan AI untuk mengoptimalkan proses respons insiden keamanan siber dan memperkuat deteksi Advanced Persistent Threats (APTs) melalui model berbasis pohon keputusan yang dioptimalkan secara dinamis. Paper ini dapat diakses di [Results in Engineering Portal](https://doi.org/10.1016/j.rineng.2025.104078).
+
+    
+- **Bukti Eksekusi Skenario (Screenshot Demonstrasi)**
+- Tes 1
+<img width="1920" height="895" alt="image1 (2)" src="https://github.com/user-attachments/assets/88f7e04a-f906-449f-9eea-99817e4c7a94" />
+
+- Tes 2
+<img width="1920" height="895" alt="image2 (2)" src="https://github.com/user-attachments/assets/5ad84ba8-a0f0-4fe2-9c4b-666425acc32a" />
+
+- Tes 3
+<img width="1920" height="910" alt="image3 (2)" src="https://github.com/user-attachments/assets/2c642108-ecaa-4826-96e7-4d6dd6e8fa8f" />
+
+- Tes 4
+<img width="1920" height="910" alt="image4" src="https://github.com/user-attachments/assets/d03f0c1e-5676-4159-8ee5-0fae4cc351e8" />
+
+- Tes 5
+<img width="1920" height="910" alt="image5" src="https://github.com/user-attachments/assets/7d422b39-96ec-4e1a-b125-4cd8df7bdd78" />
+
+
+
+
+
+
