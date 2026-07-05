@@ -173,6 +173,8 @@ Kami membuktikan arsitektur tidak hanya bisa mendeteksi, tapi juga **merespons s
 
 ### 5. AI Integration & Analysis (False Alarm Reduction)
 
+Model AI dapat diakses di [Drive AI FP SOC](https://drive.google.com/drive/folders/1obVWZZB9HqfNpu0IdDoPfwFC6RZ5JvRY?usp=drive_link).
+
 Kami mengintegrasikan model AI hibrida berbasis **Ensemble Machine Learning** dan **Symbolic Rules (Safety Overrides)** ke dalam pipeline SOAR untuk menyaring alert Wazuh secara real-time guna membedakan ancaman nyata dengan alarm palsu.
 
 - **Analisis Kriteria False Alarm:**
